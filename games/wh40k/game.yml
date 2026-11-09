@@ -1,0 +1,22 @@
+# Source registry for one game. Add a new game by copying this folder;
+# add new rules or updates by dropping PDFs into the listed folders and
+# re-running:  python -m locus_ingest run --game wh40k
+game: wh40k
+name: Warhammer 40,000
+corpus_dir: corpus/wh40k
+sources:
+  - path: files/core rules
+    match: "*core_rules*.pdf"
+    profile: core_rules
+    collection: core
+  - path: files/core rules
+    match: "*updates*.pdf"
+    profile: pack
+    collection: updates
+    scope: universal
+  - path: files/faction packs
+    match: "*.pdf"
+    profile: pack
+    collection: factions
+# Sections of the core rules that correspond to a phase of the turn.
+phases: [command, movement, shooting, charge, fight]

@@ -1,0 +1,13 @@
+# Keep corpus/ in the build context: the image needs the Markdown rules.
+.git
+.venv
+.claude
+files
+data
+ingest
+scripts
+**/node_modules
+server/dist
+corpus/**/_archive
+.env
+*.log

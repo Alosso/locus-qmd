@@ -1,0 +1,40 @@
+# Fly.io deployment. Change `app` to a name you own and `primary_region` to one near you
+# (fly platform regions), then see README.md > Deploy.
+app = "locus-qmd"
+primary_region = "fra"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  DATA_DIR = "/data"
+  GAME = "wh40k"
+  LLM_PROVIDER = "anthropic"
+
+# qmd SQLite index, GGUF model cache and graph database survive deploys and restarts here.
+[mounts]
+  source = "locus_data"
+  destination = "/data"
+  initial_size = "3gb"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # The voice worker holds an outbound connection to LiveKit and must stay up to take calls.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/healthz"
+    interval = "30s"
+    timeout = "5s"
+    # First boot downloads the embedding model and embeds the corpus before reporting healthy.
+    grace_period = "10m"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 2
+  memory = "4gb"

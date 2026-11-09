@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Locus Rules Assistant</title>
+<style>
+  :root { --bg:#f6f5f2; --panel:#fff; --ink:#1d1c1a; --muted:#6b675f; --line:#dedad2; --accent:#8a1c1c; --accent-ink:#fff; --upd:#fbeeee; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#161514; --panel:#1f1e1c; --ink:#ece9e2; --muted:#a09a8e; --line:#35322d; --accent:#d2574f; --accent-ink:#1a0d0c; --upd:#33201f; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 16px; display:flex; flex-direction:column; min-height:100dvh; }
+  header { display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; padding-bottom:12px; border-bottom:1px solid var(--line); }
+  h1 { font-size:1.15rem; margin:0; flex:1 1 auto; }
+  select, input, button, textarea { font:inherit; color:inherit; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+  button { cursor:pointer; }
+  button.primary { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:600; }
+  button:disabled { opacity:.5; cursor:default; }
+  #log { flex:1; padding:16px 0; display:flex; flex-direction:column; gap:14px; }
+  .msg { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; overflow-wrap:anywhere; }
+  .msg.user { align-self:flex-end; max-width:85%; background:transparent; }
+  .msg .text { white-space:pre-wrap; }
+  .msg .meta { color:var(--muted); font-size:.8rem; margin-top:8px; }
+  .cite { display:inline-block; min-width:1.5em; text-align:center; font-size:.75rem; font-weight:700; border:1px solid var(--accent); color:var(--accent); border-radius:6px; padding:0 4px; margin:0 1px; text-decoration:none; }
+  details.sources { margin-top:10px; border-top:1px solid var(--line); padding-top:8px; font-size:.9rem; }
+  details.sources summary { cursor:pointer; color:var(--muted); }
+  .src { padding:6px 8px; border-radius:8px; margin-top:6px; border:1px solid var(--line); }
+  .src.update { background:var(--upd); }
+  .src.unused { opacity:.6; }
+  .src small { color:var(--muted); display:block; }
+  .tag { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--accent); margin-left:6px; }
+  form { display:flex; gap:8px; position:sticky; bottom:0; background:var(--bg); padding:12px 0; border-top:1px solid var(--line); }
+  textarea { flex:1; resize:none; min-height:46px; }
+  #status { color:var(--muted); font-size:.85rem; width:100%; }
+  .err { color:var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Locus Rules Assistant</h1>
+    <select id="faction" aria-label="Faction"><option value="">Any faction</option></select>
+    <input id="token" type="password" placeholder="API token" aria-label="API token" autocomplete="off" size="14">
+    <button id="talk" type="button">Talk</button>
+    <div id="status" role="status"></div>
+  </header>
+  <div id="log" aria-live="polite"></div>
+  <form id="ask">
+    <textarea id="q" placeholder="Ask a rules question, e.g. Can a unit charge after disembarking?" rows="1" required></textarea>
+    <button class="primary" type="submit">Ask</button>
+  </form>
+</main>
+<audio id="agent-audio" autoplay></audio>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const log = $("log"), status = $("status"), tokenInput = $("token");
+try { tokenInput.value = localStorage.getItem("locus.token") ?? ""; } catch {}
+tokenInput.addEventListener("change", () => { try { localStorage.setItem("locus.token", tokenInput.value); } catch {} loadMeta(); });
+const headers = () => ({ "Content-Type": "application/json", ...(tokenInput.value ? { Authorization: `Bearer ${tokenInput.value}` } : {}) });
+const history = [];
+
+async function loadMeta() {
+  try {
+    const res = await fetch("/api/meta", { headers: headers() });
+    if (res.status === 401) { status.textContent = "Enter the API token to start."; return; }
+    const meta = await res.json();
+    const sel = $("faction"), keep = sel.value;
+    sel.length = 1;
+    for (const f of meta.factions) sel.add(new Option(f, f));
+    sel.value = keep;
+    $("talk").disabled = !meta.voice;
+    status.textContent = `${Object.keys(meta.documents).length} documents indexed` + (meta.voice ? "" : " · voice is not configured on this server");
+  } catch { status.textContent = "Server not reachable."; }
+}
+
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+function renderSources(box, sources, cited) {
+  box.replaceChildren();
+  const d = el("details", "sources"); d.open = true;
+  d.append(el("summary", null, `Sources (${cited?.length ?? sources.length} cited of ${sources.length} retrieved)`));
+  for (const s of sources) {
+    const row = el("div", "src" + (s.is_update ? " update" : "") + (cited && !cited.includes(s.n) ? " unused" : ""));
+    row.id = `${box.dataset.key}-s${s.n}`;
+    const title = el("div"); title.append(el("span", "cite", String(s.n)), document.createTextNode(" " + (s.rule_number ? s.rule_number + " " : "") + s.title));
+    if (s.is_update) title.append(el("span", "tag", "rules update"));
+    const doc = s.document + (s.printed_version ? ` v${s.printed_version}` : "") + (s.document_version ? ` (${s.document_version})` : "");
+    row.append(title, el("small", null, [doc, s.section, s.pages && `p.${s.pages}`, s.effective_date && `legal from ${s.effective_date}`].filter(Boolean).join(" · ")));
+    d.append(row);
+  }
+  box.append(d);
+}
+
+function renderAnswer(node, text, key) {
+  node.replaceChildren();
+  let i = 0;
+  for (const m of text.matchAll(/\[(\d{1,2})\]/g)) {
+    node.append(document.createTextNode(text.slice(i, m.index)));
+    const a = el("a", "cite", m[1]); a.href = `#${key}-s${m[1]}`; node.append(a);
+    i = m.index + m[0].length;
+  }
+  node.append(document.createTextNode(text.slice(i)));
+}
+
+async function ask(question) {
+  log.append(Object.assign(el("div", "msg user"), { textContent: question }));
+  const key = "a" + Date.now();
+  const box = el("div", "msg"), textNode = el("div", "text", "Searching the rules…"), srcBox = el("div"), meta = el("div", "meta");
+  srcBox.dataset.key = key;
+  box.append(textNode, srcBox, meta); log.append(box); box.scrollIntoView({ behavior: "smooth", block: "end" });
+  let text = "", sources = [];
+  try {
+    const res = await fetch("/api/chat", { method: "POST", headers: headers(), body: JSON.stringify({ question, history, faction: $("faction").value || null }) });
+    if (!res.ok) throw new Error(res.status === 401 ? "Unauthorized: check the API token." : `Request failed (${res.status}).`);
+    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buf = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += value;
+      let cut;
+      while ((cut = buf.indexOf("\n\n")) >= 0) {
+        const frame = buf.slice(0, cut); buf = buf.slice(cut + 2);
+        const type = /^event: (.+)$/m.exec(frame)?.[1], data = JSON.parse(/^data: (.+)$/m.exec(frame)?.[1] ?? "{}");
+        if (type === "sources") { sources = data.sources; renderSources(srcBox, sources); textNode.textContent = "Reading…"; }
+        else if (type === "delta") { text += data.text; renderAnswer(textNode, text, key); }
+        else if (type === "error") { const e = el("div", "err", data.message); box.insertBefore(e, srcBox); if (!text) textNode.textContent = ""; }
+        else if (type === "done") {
+          if (text) renderSources(srcBox, sources, data.cited);
+          meta.textContent = [data.model, `retrieval ${data.timings.retrieval_ms} ms`, data.timings.first_token_ms && `first token ${data.timings.first_token_ms} ms`].filter(Boolean).join(" · ");
+        }
+      }
+    }
+    if (text) history.push({ role: "user", content: question }, { role: "assistant", content: text });
+  } catch (err) { textNode.textContent = ""; box.insertBefore(el("div", "err", err.message), srcBox); }
+}
+
+$("ask").addEventListener("submit", (e) => { e.preventDefault(); const q = $("q").value.trim(); if (!q) return; $("q").value = ""; ask(q); });
+$("q").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("ask").requestSubmit(); } });
+
+// ---- voice (LiveKit) -------------------------------------------------------
+let room = null;
+$("talk").addEventListener("click", async () => {
+  const btn = $("talk");
+  if (room) { await room.disconnect(); room = null; btn.textContent = "Talk"; status.textContent = "Voice session ended."; return; }
+  btn.disabled = true; status.textContent = "Connecting voice…";
+  try {
+    const { Room, RoomEvent, Track } = await import("https://cdn.jsdelivr.net/npm/livekit-client@2.15.7/+esm");
+    const res = await fetch("/api/voice/token", { method: "POST", headers: headers(), body: JSON.stringify({ faction: $("faction").value }) });
+    if (!res.ok) throw new Error((await res.json()).message ?? "Could not start a voice session.");
+    const { url, token } = await res.json();
+    room = new Room();
+    room.on(RoomEvent.TrackSubscribed, (track) => { if (track.kind === Track.Kind.Audio) track.attach($("agent-audio")); });
+    room.on(RoomEvent.DataReceived, (payload, _p, _k, topic) => {
+      if (topic !== "locus.sources") return;
+      const data = JSON.parse(new TextDecoder().decode(payload));
+      const key = "v" + Date.now(), box = el("div", "msg"), srcBox = el("div"); srcBox.dataset.key = key;
+      box.append(el("div", "text", "🎙 " + data.question), srcBox); renderSources(srcBox, data.sources); log.append(box);
+      box.scrollIntoView({ behavior: "smooth", block: "end" });
+    });
+    room.on(RoomEvent.Disconnected, () => { room = null; btn.textContent = "Talk"; });
+    await room.connect(url, token);
+    await room.localParticipant.setMicrophoneEnabled(true);
+    btn.textContent = "Stop"; status.textContent = "Listening. Ask your question out loud.";
+  } catch (err) { status.textContent = err.message; room = null; }
+  btn.disabled = false;
+});
+
+loadMeta();
+</script>
+</body>
+</html>

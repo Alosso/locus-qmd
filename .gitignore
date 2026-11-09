@@ -1,0 +1,20 @@
+# Source rulebooks and everything derived from them are the publisher's copyrighted text:
+# keep them out of the repository. Deployment still works because `fly deploy` builds
+# from the local directory (see .dockerignore).
+files/
+corpus/
+
+# Local state
+data/
+.env
+.venv/
+ingest/.cache/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+server/dist/
+
+.claude/
+*.log
