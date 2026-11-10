@@ -1,4 +1,4 @@
-/** Provider-neutral streaming interface. Select with LLM_PROVIDER=anthropic|openai. */
+/** Provider-neutral streaming interface. Select with LLM_PROVIDER=anthropic|openai|google. */
 import { config } from "../config.js";
 
 export interface ChatTurn {
@@ -29,7 +29,9 @@ let provider: LLMProvider | null = null;
 
 export async function getProvider(): Promise<LLMProvider> {
   if (provider) return provider;
-  if (config.llm.provider === "openai") {
+  if (config.llm.provider === "google") {
+    provider = new (await import("./google.js")).GoogleProvider();
+  } else if (config.llm.provider === "openai") {
     provider = new (await import("./openai.js")).OpenAIProvider();
   } else {
     provider = new (await import("./anthropic.js")).AnthropicProvider();

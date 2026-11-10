@@ -6,7 +6,7 @@ Hybrid GraphRAG rules assistant for tabletop games (Warhammer 40,000 first), wit
 PDFs -> ingest (Python) -> corpus/<game>/**/*.md + graph.jsonl
      -> qmd index (BM25 + vectors + RRF, SQLite) + graph.sqlite
      -> retriever (qmd hits -> graph nodes -> errata overlay -> related rules)
-     -> LLM (Claude by default, OpenAI optional) -> SSE / WebSocket / LiveKit voice
+     -> LLM (Claude by default; OpenAI or Google Gemini optional) -> SSE / WebSocket / LiveKit voice
 ```
 
 The rulebook PDFs and the Markdown derived from them are not in this repository (see `.gitignore`). Put your PDFs under `files/` as listed in `games/wh40k/game.yml`.

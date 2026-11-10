@@ -20,6 +20,7 @@ import * as anthropicPlugin from "@livekit/agents-plugin-anthropic";
 import * as livekitPlugin from "@livekit/agents-plugin-livekit";
 import * as openaiPlugin from "@livekit/agents-plugin-openai";
 import * as silero from "@livekit/agents-plugin-silero";
+import { GEMINI_BASE_URL, GEMINI_VOICE_MODEL, geminiKey } from "../llm/google.js";
 import { getProvider, type ChatTurn } from "../llm/provider.js";
 import { userTurn, VOICE_SYSTEM } from "../llm/prompts.js";
 import { retrievalQuery } from "../answer.js";
@@ -127,9 +128,11 @@ export default defineAgent({
     const lk = config.livekit;
     // The session needs an LLM object for its bookkeeping; generation itself runs in llmNode above.
     const sessionLlm =
-      config.llm.provider === "openai"
-        ? new openaiPlugin.LLM({ model: config.llm.voiceModel || "gpt-4.1-mini" })
-        : new anthropicPlugin.LLM({ model: config.llm.voiceModel || "claude-haiku-5-5" });
+      config.llm.provider === "google"
+        ? new openaiPlugin.LLM({ model: config.llm.voiceModel || GEMINI_VOICE_MODEL, apiKey: geminiKey(), baseURL: GEMINI_BASE_URL })
+        : config.llm.provider === "openai"
+          ? new openaiPlugin.LLM({ model: config.llm.voiceModel || "gpt-4.1-mini" })
+          : new anthropicPlugin.LLM({ model: config.llm.voiceModel || "claude-haiku-5-5" });
     const session = new voice.AgentSession({
       // "provider/model" strings are served by LiveKit Inference with the LiveKit key alone.
       stt: lk.stt as inference.STTModelString,

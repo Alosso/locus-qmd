@@ -60,7 +60,7 @@ export const config = {
   host: env("HOST", "0.0.0.0"),
   authToken: env("API_AUTH_TOKEN"),
   llm: {
-    provider: env("LLM_PROVIDER", "anthropic") as "anthropic" | "openai",
+    provider: env("LLM_PROVIDER", "anthropic") as "anthropic" | "openai" | "google",
     textModel: env("LLM_TEXT_MODEL"),
     voiceModel: env("LLM_VOICE_MODEL"),
   },
