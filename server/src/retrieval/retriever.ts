@@ -175,7 +175,7 @@ export async function retrieve(query: string, opts: { mode?: Mode; faction?: str
   const facQuota = want.size ? Math.ceil(k * 0.67) : 1;
   // The universal-updates collection is tiny, so vector search always returns something from
   // it. Keep such a hit only near the top; errata reach their rules through the graph anyway.
-  const genKept = gen.filter((x, i) => !x.node.is_update || i < 2);
+  const genKept = gen.filter((x, i) => !x.node.is_update || i < 4);
   const picked: Array<{ node: GraphNode; score: number }> = [];
   const first = want.size ? fac.slice(0, facQuota) : genKept.slice(0, k - facQuota);
   const second = want.size ? genKept.slice(0, Math.max(1, k - first.length)) : fac.slice(0, facQuota);
@@ -225,7 +225,10 @@ export async function retrieve(query: string, opts: { mode?: Mode; faction?: str
           continue;
         }
         const tb = await add(t, "amended_rule", { relation: e.type }, 3000);
-        if (tb) tb.source.amended_by = [...new Set([...(tb.source.amended_by ?? []), ub.source.n])];
+        if (tb) {
+          tb.source.amended_by = [...new Set([...(tb.source.amended_by ?? []), ub.source.n])];
+          await attachUpdates(tb); // the amended rule may have further errata
+        }
       }
       if (missing.length) ub.note = `The original text of ${missing.join(", ")} is in a publication that is not in this index; only the amended wording is available.`;
     } else {

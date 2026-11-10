@@ -14,9 +14,12 @@ sources:
     profile: pack
     collection: updates
     scope: universal
-  - path: files/faction packs
-    match: "*.pdf"
-    profile: pack
-    collection: factions
+  # Faction packs are deliberately not indexed: they hold only additions and errata to
+  # the Codexes, not complete faction rules, so answers built on them would be partial.
+  # To index them anyway, uncomment:
+  # - path: files/faction packs
+  #   match: "*.pdf"
+  #   profile: pack
+  #   collection: factions
 # Sections of the core rules that correspond to a phase of the turn.
 phases: [command, movement, shooting, charge, fight]

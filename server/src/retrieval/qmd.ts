@@ -35,6 +35,15 @@ export function getStore(): Promise<QMDStore> {
 /** (Re)index the Markdown corpus and embed any new or changed chunks. */
 export async function buildIndex(log: (msg: string) => void = console.log): Promise<void> {
   const s = await getStore();
+  // Drop collections that are no longer part of the corpus (e.g. a source was removed
+  // from game.yml); otherwise their documents would keep turning up in search results.
+  const wanted = new Set(collectionNames().map(qmdName));
+  for (const c of (await s.getStatus()).collections) {
+    if (c.name.startsWith(`${config.game}-`) && !wanted.has(c.name)) {
+      await s.removeCollection(c.name);
+      log(`qmd: removed stale collection ${c.name} (${c.documents} documents)`);
+    }
+  }
   for (const c of collectionNames()) {
     if (CONTEXTS[c]) await s.addContext(qmdName(c), "/", CONTEXTS[c]);
   }

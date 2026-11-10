@@ -70,6 +70,7 @@ async function loadMeta() {
     sel.length = 1;
     for (const f of meta.factions) sel.add(new Option(f, f));
     sel.value = keep;
+    sel.hidden = meta.factions.length === 0;
     $("talk").disabled = !meta.voice;
     status.textContent = `${Object.keys(meta.documents).length} documents indexed` + (meta.voice ? "" : " · voice is not configured on this server");
   } catch { status.textContent = "Server not reachable."; }

@@ -9,6 +9,8 @@ PDFs -> ingest (Python) -> corpus/<game>/**/*.md + graph.jsonl
      -> LLM (Claude by default; OpenAI or Google Gemini optional) -> SSE / WebSocket / LiveKit voice
 ```
 
+Scope: the Core Rules and the Universal Rules Updates (`files/core rules`). Faction packs are not indexed, because they hold only additions and errata to the Codexes rather than complete faction rules; the parser for them is still in the repo and can be switched on in `games/wh40k/game.yml`.
+
 The rulebook PDFs and the Markdown derived from them are not in this repository (see `.gitignore`). Put your PDFs under `files/` as listed in `games/wh40k/game.yml`.
 
 ## Setup
