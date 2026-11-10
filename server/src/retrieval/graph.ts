@@ -231,6 +231,6 @@ export class Graph {
   private entityNames?: Array<{ key: string; id: string }>;
 
   factions(): string[] {
-    return [...this.nodes.values()].filter((n) => n.type === "Faction").map((n) => n.name).sort();
+    return [...this.nodes.values()].filter((n) => n.type === "Faction" && n.name.toLowerCase() !== "universal").map((n) => n.name).sort();
   }
 }

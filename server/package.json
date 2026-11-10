@@ -15,7 +15,8 @@
     "index": "tsx scripts/build-index.ts",
     "graph": "tsx scripts/build-graph.ts",
     "eval": "tsx scripts/eval.ts",
-    "bench": "tsx scripts/bench.ts"
+    "bench": "tsx scripts/bench.ts",
+    "ask": "tsx scripts/ask.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.7.0",

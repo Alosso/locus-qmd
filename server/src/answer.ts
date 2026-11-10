@@ -53,6 +53,7 @@ export async function* answer(req: AnswerRequest): AsyncGenerator<AnswerEvent> {
       text += d;
       yield { type: "delta", text: d };
     }
+    model = provider.model(req.voice); // may differ after a provider-side fallback
   } catch (err) {
     if (req.signal?.aborted) return;
     const unavailable = err instanceof LLMUnavailable;
