@@ -63,6 +63,28 @@ npm --prefix server run eval    # 20 retrieval questions, no LLM needed
 npm --prefix server run bench   # retrieval and first-token latency
 ```
 
+## Use from your phone (Tailscale)
+
+Free, private, and nothing is exposed to the internet. The PC runs the server; the phone reaches it through your Tailscale network over HTTPS (which Android needs for the microphone).
+
+1. Install Tailscale on the PC and on the phone, and sign in to the same account on both.
+2. In the Tailscale admin console, enable MagicDNS and HTTPS certificates (DNS page).
+3. On the PC, publish the server inside your tailnet (once; it persists across reboots):
+
+```bash
+tailscale serve --bg 8080
+```
+
+4. Start the server; the script prints the address for the phone:
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts\start.ps1
+```
+
+5. On the phone, open that `https://<pc-name>.<tailnet>.ts.net` address in Chrome, then menu > "Add to Home screen".
+
+The PC must be on and the server running. `API_AUTH_TOKEN` is optional here, since only your own devices can reach the address.
+
 ## Deploy (Fly.io)
 
 Run the ingestion locally first so `corpus/` exists, then:
